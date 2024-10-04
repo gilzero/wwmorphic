@@ -4,16 +4,15 @@ import { CoreMessage, generateText, streamText } from 'ai'
 import { getTools } from './tools'
 import { getModel } from '../utils'
 import { AnswerSection } from '@/components/answer-section'
+import { SYSTEM_PROMPT_RESEARCHER } from '../prompts'
 
-const SYSTEM_PROMPT = `As a professional search expert, you possess the ability to search for any information on the web.
-For each user query, utilize the search results to their fullest potential to provide additional information and assistance in your response.
-If there are any images relevant to your answer, be sure to include them as well.
-Aim to directly address the user's question, augmenting your response with insights gleaned from the search results.`
+const SYSTEM_PROMPT = SYSTEM_PROMPT_RESEARCHER
 
 export async function researcher(
-  uiStream: ReturnType<typeof createStreamableUI>,
-  messages: CoreMessage[]
+    uiStream: ReturnType<typeof createStreamableUI>,
+    messages: CoreMessage[]
 ) {
+  console.log('[INFO] Researcher function invoked')
   try {
     let fullResponse = ''
     const streamableText = createStreamableValue<string>()
@@ -61,9 +60,10 @@ export async function researcher(
 }
 
 export async function researcherWithOllama(
-  uiStream: ReturnType<typeof createStreamableUI>,
-  messages: CoreMessage[]
+    uiStream: ReturnType<typeof createStreamableUI>,
+    messages: CoreMessage[]
 ) {
+  console.log('[INFO] Researcher with Ollama function invoked')
   try {
     const fullResponse = ''
     const streamableText = createStreamableValue<string>()

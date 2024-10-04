@@ -4,11 +4,15 @@ import { CoreMessage, streamObject } from 'ai'
 import { PartialRelated, relatedSchema } from '@/lib/schema/related'
 import SearchRelated from '@/components/search-related'
 import { getModel } from '../utils'
+import { SYSTEM_PROMPT_QUERY_SUGGESTOR } from '../prompts'
+
+const SYSTEM_PROMPT = SYSTEM_PROMPT_QUERY_SUGGESTOR
 
 export async function querySuggestor(
-  uiStream: ReturnType<typeof createStreamableUI>,
-  messages: CoreMessage[]
+    uiStream: ReturnType<typeof createStreamableUI>,
+    messages: CoreMessage[]
 ) {
+  console.log('[INFO] Query Suggestor function invoked')
   const objectStream = createStreamableValue<PartialRelated>()
   uiStream.append(<SearchRelated relatedQueries={objectStream.value} />)
 
@@ -22,26 +26,21 @@ export async function querySuggestor(
   let finalRelatedQueries: PartialRelated = {}
   await streamObject({
     model: getModel(),
-    system: `As a professional web researcher, your task is to generate a set of three queries that explore the subject matter more deeply, building upon the initial query and the information uncovered in its search results.
-
-    For instance, if the original query was "Starship's third test flight key milestones", your output should follow this format:
-
-    Aim to create queries that progressively delve into more specific aspects, implications, or adjacent topics related to the initial query. The goal is to anticipate the user's potential information needs and guide them towards a more comprehensive understanding of the subject matter.
-    Please match the language of the response to the user's language.`,
+    system: SYSTEM_PROMPT,
     messages: lastMessages,
     schema: relatedSchema
   })
-    .then(async result => {
-      for await (const obj of result.partialObjectStream) {
-        if (obj.items) {
-          objectStream.update(obj)
-          finalRelatedQueries = obj
+      .then(async result => {
+        for await (const obj of result.partialObjectStream) {
+          if (obj.items) {
+            objectStream.update(obj)
+            finalRelatedQueries = obj
+          }
         }
-      }
-    })
-    .finally(() => {
-      objectStream.done()
-    })
+      })
+      .finally(() => {
+        objectStream.done()
+      })
 
   return finalRelatedQueries
 }
