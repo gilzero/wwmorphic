@@ -3,20 +3,20 @@ import { ArrowRight } from 'lucide-react'
 
 const exampleMessages = [
   {
-    heading: 'What is OpenAI o1?',
-    message: 'What is OpenAI o1?'
+    heading: '什么是人工智能?',
+    message: '什么是人工智能?'
   },
   {
-    heading: 'Why is Nvidia growing rapidly?',
-    message: 'Why is Nvidia growing rapidly?'
+    heading: '关于福州的有趣事情?',
+    message: '关于福州的有趣事情?'
   },
   {
-    heading: 'How does the Vercel AI SDK work?',
-    message: 'How does the Vercel AI SDK work?'
+    heading: '介绍马斯克的SpaceX计划',
+    message: '介绍马斯克的SpaceX计划'
   },
   {
-    heading: 'Tesla vs Rivian',
-    message: 'Tesla vs Rivian'
+    heading: '乔布斯说的 `Real artists ship` 是什么意思?',
+    message: '乔布斯说的 `Real artists ship` 是什么意思?'
   }
 ]
 export function EmptyScreen({

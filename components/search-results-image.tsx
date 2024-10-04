@@ -57,7 +57,7 @@ export const SearchResultsImageSection: React.FC<
   }, [api, selectedIndex])
 
   if (!images || images.length === 0) {
-    return <div className="text-muted-foreground">No images found</div>
+    return <div className="text-muted-foreground">无图片</div>
   }
 
   // If enabled the include_images_description is true, the images will be an array of { url: string, description: string }

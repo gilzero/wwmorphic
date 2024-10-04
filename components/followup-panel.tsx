@@ -47,7 +47,7 @@ export function FollowupPanel() {
       <Input
         type="text"
         name="input"
-        placeholder="Ask a follow-up question..."
+        placeholder="后续问题..."
         value={input}
         className="pr-14 h-12"
         onChange={e => setInput(e.target.value)}
