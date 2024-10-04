@@ -1,6 +1,6 @@
+// lib/agents/tools/search.tsx
 import { tool } from 'ai'
 import { createStreamableValue } from 'ai/rsc'
-import Exa from 'exa-js'
 import { searchSchema } from '@/lib/schema/search'
 import { SearchSection } from '@/components/search-section'
 import { ToolProps } from '.'
@@ -35,28 +35,17 @@ export const searchTool = ({ uiStream, fullResponse }: ToolProps) =>
         const filledQuery =
             query.length < 5 ? query + ' '.repeat(5 - query.length) : query
         let searchResult: SearchResults
-        const searchAPI = (process.env.SEARCH_API as 'tavily' | 'exa') || 'tavily'
 
-        console.log(`Using search API: ${searchAPI}`)
+        console.log('Using search API: tavily')
 
         try {
-          if (searchAPI === 'tavily') {
-            searchResult = await tavilySearch(
-                filledQuery,
-                max_results,
-                search_depth,
-                include_domains,
-                exclude_domains
-            )
-          } else {
-            searchResult = await exaSearch(
-                filledQuery,
-                max_results,
-                search_depth,
-                include_domains,
-                exclude_domains
-            )
-          }
+          searchResult = await tavilySearch(
+              filledQuery,
+              max_results,
+              search_depth,
+              include_domains,
+              exclude_domains
+          )
           console.log('[INFO] Search successful:', searchResult)
         } catch (error) {
           console.error('[ERROR] Search API error:', error)
@@ -139,39 +128,5 @@ async function tavilySearch(
   return {
     ...data,
     images: processedImages
-  }
-}
-
-async function exaSearch(
-    query: string,
-    maxResults: number = 10,
-    _searchDepth: string,
-    includeDomains: string[] = [],
-    excludeDomains: string[] = []
-): Promise<SearchResults> {
-  console.log('[INFO] Exa search started with query:', query)
-  const apiKey = process.env.EXA_API_KEY
-  if (!apiKey) {
-    throw new Error('EXA_API_KEY is not set in the environment variables')
-  }
-
-  const exa = new Exa(apiKey)
-  const exaResults = await exa.searchAndContents(query, {
-    highlights: true,
-    numResults: maxResults,
-    includeDomains,
-    excludeDomains
-  })
-
-  console.log('[INFO] Exa search successful:', exaResults)
-  return {
-    results: exaResults.results.map((result: any) => ({
-      title: result.title,
-      url: result.url,
-      content: result.highlight || result.text
-    })),
-    query,
-    images: [],
-    number_of_results: exaResults.results.length
   }
 }

@@ -1,3 +1,4 @@
+// lib/utils/app-state.tsx
 'use client'
 
 import { createContext, useState, ReactNode, useContext } from 'react'
