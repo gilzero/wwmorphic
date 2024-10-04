@@ -1,108 +1,44 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { createOllama } from 'ollama-ai-provider'
 import { createOpenAI } from '@ai-sdk/openai'
-import { createAzure } from '@ai-sdk/azure'
 import { google } from '@ai-sdk/google'
 import { anthropic } from '@ai-sdk/anthropic'
-import { CoreMessage } from 'ai'
+import { CoreMessage, LanguageModelV1 } from 'ai'
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+// Simple logging function
+const log = {
+  info: (message: string) => console.log(`[INFO] ${message}`),
+  warn: (message: string) => console.warn(`[WARN] ${message}`),
+  error: (message: string) => console.error(`[ERROR] ${message}`),
+  debug: (message: string) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEBUG] ${message}`)
+    }
+  }
 }
 
-export function getModel(useSubModel = false) {
-  const ollamaBaseUrl = process.env.OLLAMA_BASE_URL + '/api'
-  const ollamaModel = process.env.OLLAMA_MODEL
-  const ollamaSubModel = process.env.OLLAMA_SUB_MODEL
-  const openaiApiBase = process.env.OPENAI_API_BASE
-  const openaiApiKey = process.env.OPENAI_API_KEY
-  let openaiApiModel = process.env.OPENAI_API_MODEL || 'gpt-4o'
-  const azureResourceName = process.env.AZURE_RESOURCE_NAME
-  const azureApiKey = process.env.AZURE_API_KEY
-  let azureDeploymentName = process.env.AZURE_DEPLOYMENT_NAME || 'gpt-4o'
-  const googleApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
-  const anthropicApiKey = process.env.ANTHROPIC_API_KEY
-  const groqApiKey = process.env.GROQ_API_KEY
-  const groqApiModel = process.env.GROQ_API_MODEL
-
-  if (
-    !(ollamaBaseUrl && ollamaModel) &&
-    !openaiApiKey &&
-    !googleApiKey &&
-    !anthropicApiKey &&
-    !(azureApiKey && azureResourceName)
-  ) {
-    throw new Error(
-      'Missing environment variables for Ollama, OpenAI, Azure OpenAI, Google or Anthropic'
-    )
+// Configuration object
+const config = {
+  openai: {
+    apiBase: () => process.env.OPENAI_API_BASE,
+    apiKey: () => process.env.OPENAI_API_KEY,
+    model: () => process.env.OPENAI_API_MODEL || 'gpt-4o-mini'
+  },
+  google: {
+    apiKey: () => process.env.GOOGLE_GENERATIVE_AI_API_KEY
+  },
+  anthropic: {
+    apiKey: () => process.env.ANTHROPIC_API_KEY
   }
-  // Ollama
-  if (ollamaBaseUrl && ollamaModel) {
-    const ollama = createOllama({ baseURL: ollamaBaseUrl })
-
-    if (useSubModel && ollamaSubModel) {
-      return ollama(ollamaSubModel)
-    }
-
-    return ollama(ollamaModel)
-  }
-
-  if (googleApiKey) {
-    return google('gemini-1.5-pro-002')
-  }
-
-  if (anthropicApiKey) {
-    return anthropic('claude-3-5-sonnet-20240620')
-  }
-
-  if (azureApiKey && azureResourceName) {
-    const azure = createAzure({
-      apiKey: azureApiKey,
-      resourceName: azureResourceName
-    })
-
-    return azure.chat(azureDeploymentName)
-  }
-
-  if (groqApiKey && groqApiModel) {
-    const groq = createOpenAI({
-      apiKey: groqApiKey,
-      baseURL: 'https://api.groq.com/openai/v1'
-    })
-
-    return groq.chat(groqApiModel)
-  }
-
-  // Fallback to OpenAI instead
-  const openai = createOpenAI({
-    baseURL: openaiApiBase, // optional base URL for proxies etc.
-    apiKey: openaiApiKey, // optional API key, default to env property OPENAI_API_KEY
-    organization: '' // optional organization
-  })
-
-  return openai.chat(openaiApiModel)
 }
 
 /**
- * Takes an array of AIMessage and modifies each message where the role is 'tool'.
- * Changes the role to 'assistant' and converts the content to a JSON string.
- * Returns the modified messages as an array of CoreMessage.
- *
- * @param aiMessages - Array of AIMessage
- * @returns modifiedMessages - Array of modified messages
+ * Combines Tailwind CSS classes.
+ * @param inputs - ClassValue array to be combined
+ * @returns Combined CSS classes
  */
-export function transformToolMessages(messages: CoreMessage[]): CoreMessage[] {
-  return messages.map(message =>
-    message.role === 'tool'
-      ? {
-          ...message,
-          role: 'assistant',
-          content: JSON.stringify(message.content),
-          type: 'tool'
-        }
-      : message
-  ) as CoreMessage[]
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(inputs))
 }
 
 /**
@@ -111,5 +47,90 @@ export function transformToolMessages(messages: CoreMessage[]): CoreMessage[] {
  * @returns The sanitized URL
  */
 export function sanitizeUrl(url: string): string {
+  if (typeof url !== 'string') {
+    throw new TypeError('URL must be a string')
+  }
   return url.replace(/\s+/g, '%20')
 }
+
+// Model creation functions
+function getGoogleModel() {
+  return google('gemini-1.5-flash-002')
+}
+
+function getAnthropicModel() {
+  return anthropic('claude-3-5-sonnet-20240620')
+}
+
+function getOpenAIModel() {
+  const apiKey = config.openai.apiKey()
+  const baseURL = config.openai.apiBase()
+  const model = config.openai.model()
+  if (!apiKey) {
+    throw new Error('OpenAI configuration is incomplete')
+  }
+  return createOpenAI({ apiKey, baseURL, organization: '' }).chat(model)
+}
+
+// Configuration check function
+function checkConfiguration() {
+  const providers = [
+    { name: 'Google', check: () => config.google.apiKey() },
+    { name: 'Anthropic', check: () => config.anthropic.apiKey() },
+    { name: 'OpenAI', check: () => config.openai.apiKey() }
+  ]
+
+  const availableProviders = providers.filter(provider => provider.check())
+
+  if (availableProviders.length === 0) {
+    log.warn('No AI providers configured. The application will run with limited functionality.')
+  } else {
+    log.info(`Available AI providers: ${availableProviders.map(p => p.name).join(', ')}`)
+  }
+}
+
+/**
+ * Selects and returns an AI model based on available configurations.
+ * @returns An instance of the selected AI model or null if no provider is available
+ */
+export function getModel(): LanguageModelV1 {
+  const providers = [
+    { name: 'Google', check: () => config.google.apiKey(), get: getGoogleModel },
+    { name: 'Anthropic', check: () => config.anthropic.apiKey(), get: getAnthropicModel },
+    { name: 'OpenAI', check: () => config.openai.apiKey(), get: getOpenAIModel }
+  ]
+
+  for (const provider of providers) {
+    try {
+      if (provider.check()) {
+        return provider.get()
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      log.debug(`${provider.name} provider not available: ${errorMessage}`)
+    }
+  }
+
+  throw new Error('No AI provider available. Please configure at least one provider.')
+}
+
+/**
+ * Transforms messages with 'tool' role to 'assistant' role and stringifies their content.
+ * @param messages - Array of CoreMessage to transform
+ * @returns Array of transformed CoreMessage
+ */
+export function transformToolMessages(messages: CoreMessage[]): CoreMessage[] {
+  return messages.map(message =>
+      message.role === 'tool'
+          ? {
+            ...message,
+            role: 'assistant',
+            content: JSON.stringify(message.content),
+            type: 'tool'
+          }
+          : message
+  )
+}
+
+// Call this function when your application starts
+checkConfiguration()

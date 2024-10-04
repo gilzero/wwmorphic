@@ -170,7 +170,7 @@ const CarouselContent = React.forwardRef<
     </div>
   )
 })
-CarouselContent.displayName = 'CarouselContent'
+CarouselContent.displayName = '轮播内容'
 
 const CarouselItem = React.forwardRef<
   HTMLDivElement,
@@ -192,7 +192,7 @@ const CarouselItem = React.forwardRef<
     />
   )
 })
-CarouselItem.displayName = 'CarouselItem'
+CarouselItem.displayName = '轮播项'
 
 const CarouselPrevious = React.forwardRef<
   HTMLButtonElement,
@@ -221,7 +221,7 @@ const CarouselPrevious = React.forwardRef<
     </Button>
   )
 })
-CarouselPrevious.displayName = 'CarouselPrevious'
+CarouselPrevious.displayName = '轮播上一个'
 
 const CarouselNext = React.forwardRef<
   HTMLButtonElement,
@@ -246,11 +246,11 @@ const CarouselNext = React.forwardRef<
       {...props}
     >
       <ArrowRight className="h-4 w-4" />
-      <span className="sr-only">Next slide</span>
+      <span className="sr-only">下一个</span>
     </Button>
   )
 })
-CarouselNext.displayName = 'CarouselNext'
+CarouselNext.displayName = '轮播下一个'
 
 export {
   type CarouselApi,
