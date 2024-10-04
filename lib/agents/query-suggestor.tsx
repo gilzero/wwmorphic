@@ -23,6 +23,9 @@ export async function querySuggestor(
     }
   }) as CoreMessage[]
 
+  console.log('[DEBUG] Last messages:', lastMessages)
+  console.log('[DEBUG] System prompt:', SYSTEM_PROMPT)
+
   let finalRelatedQueries: PartialRelated = {}
   await streamObject({
     model: getModel(),
@@ -31,16 +34,23 @@ export async function querySuggestor(
     schema: relatedSchema
   })
       .then(async result => {
+        console.log('[INFO] Stream object result received')
         for await (const obj of result.partialObjectStream) {
+          // console.log('[DEBUG] Partial object received:', obj)
           if (obj.items) {
             objectStream.update(obj)
             finalRelatedQueries = obj
           }
         }
       })
+      .catch(error => {
+        console.error('[ERROR] Error while streaming object:', error)
+      })
       .finally(() => {
+        console.log('[INFO] Stream object processing completed')
         objectStream.done()
       })
 
+  console.log('[DEBUG] Final related queries:', finalRelatedQueries)
   return finalRelatedQueries
 }

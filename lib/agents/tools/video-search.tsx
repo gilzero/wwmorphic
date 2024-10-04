@@ -4,13 +4,12 @@ import { searchSchema } from '@/lib/schema/search'
 import { ToolProps } from '.'
 import { VideoSearchSection } from '@/components/video-search-section'
 
-// Start Generation Here
 export const videoSearchTool = ({ uiStream, fullResponse }: ToolProps) => tool({
   description: 'Search for videos from YouTube',
   parameters: searchSchema,
   execute: async ({ query }) => {
+    console.log('[INFO] Video search started with query:', query)
     let hasError = false
-    // Append the search section
     const streamResults = createStreamableValue<string>()
     uiStream.append(<VideoSearchSection result={streamResults.value} />)
 
@@ -28,8 +27,9 @@ export const videoSearchTool = ({ uiStream, fullResponse }: ToolProps) => tool({
         throw new Error('Network response was not ok')
       }
       searchResult = await response.json()
+      console.log('[INFO] Video search successful:', searchResult)
     } catch (error) {
-      console.error('Video Search API error:', error)
+      console.error('[ERROR] Video Search API error:', error)
       hasError = true
     }
 
@@ -41,7 +41,6 @@ export const videoSearchTool = ({ uiStream, fullResponse }: ToolProps) => tool({
     }
 
     streamResults.done(JSON.stringify(searchResult))
-
     return searchResult
   }
 })

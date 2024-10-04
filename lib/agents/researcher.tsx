@@ -19,9 +19,13 @@ export async function researcher(
     let toolResults: any[] = []
 
     const currentDate = new Date().toLocaleString()
+    const systemPrompt = `${SYSTEM_PROMPT} Current date and time: ${currentDate}`
+    console.log('[DEBUG] Updated System Prompt:', systemPrompt)
+    console.log('[DEBUG] Initial messages:', messages)
+
     const result = await streamText({
       model: getModel(),
-      system: `${SYSTEM_PROMPT} Current date and time: ${currentDate}`,
+      system: systemPrompt,
       messages: messages,
       tools: getTools({
         uiStream,
@@ -29,8 +33,10 @@ export async function researcher(
       }),
       maxSteps: 5,
       onStepFinish: async event => {
+        console.log('[INFO] Step finished:', event.stepType)
         if (event.stepType === 'initial') {
           if (event.toolCalls && event.toolCalls.length > 0) {
+            console.log('[DEBUG] Tool calls:', event.toolCalls)
             uiStream.append(<AnswerSection result={streamableText.value} />)
             toolResults = event.toolResults
           } else {
@@ -42,60 +48,20 @@ export async function researcher(
 
     for await (const delta of result.fullStream) {
       if (delta.type === 'text-delta' && delta.textDelta) {
+        // console.log('[DEBUG] Text delta received:', delta.textDelta)
         fullResponse += delta.textDelta
         streamableText.update(fullResponse)
       }
     }
 
+    console.log('[INFO] Full response received')
     streamableText.done(fullResponse)
 
+    console.log('[DEBUG] Final response:', fullResponse)
+    console.log('[DEBUG] Tool results:', toolResults)
     return { text: fullResponse, toolResults }
   } catch (error) {
-    console.error('Error in researcher:', error)
-    return {
-      text: 'An error has occurred. Please try again.',
-      toolResults: []
-    }
-  }
-}
-
-export async function researcherWithOllama(
-    uiStream: ReturnType<typeof createStreamableUI>,
-    messages: CoreMessage[]
-) {
-  console.log('[INFO] Researcher with Ollama function invoked')
-  try {
-    const fullResponse = ''
-    const streamableText = createStreamableValue<string>()
-    let toolResults: any[] = []
-
-    const currentDate = new Date().toLocaleString()
-    const result = await generateText({
-      model: getModel(),
-      system: `${SYSTEM_PROMPT} Current date and time: ${currentDate}`,
-      messages: messages,
-      tools: getTools({
-        uiStream,
-        fullResponse
-      }),
-      maxSteps: 5,
-      onStepFinish: async event => {
-        if (event.stepType === 'initial') {
-          if (event.toolCalls) {
-            uiStream.append(<AnswerSection result={streamableText.value} />)
-            toolResults = event.toolResults
-          } else {
-            uiStream.update(<AnswerSection result={streamableText.value} />)
-          }
-        }
-      }
-    })
-
-    streamableText.done(result.text)
-
-    return { text: result.text, toolResults }
-  } catch (error) {
-    console.error('Error in researcherWithOllama:', error)
+    console.error('[ERROR] Error in researcher:', error)
     return {
       text: 'An error has occurred. Please try again.',
       toolResults: []

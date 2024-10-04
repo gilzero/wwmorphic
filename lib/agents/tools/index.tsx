@@ -9,6 +9,7 @@ export interface ToolProps {
 }
 
 export const getTools = ({ uiStream, fullResponse }: ToolProps) => {
+  console.log('[INFO] Initializing tools')
   const tools: any = {
     search: searchTool({
       uiStream,
@@ -27,5 +28,6 @@ export const getTools = ({ uiStream, fullResponse }: ToolProps) => {
     })
   }
 
+  console.log('[INFO] Tools initialized:', Object.keys(tools))
   return tools
 }

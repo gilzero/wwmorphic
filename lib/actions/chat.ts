@@ -26,33 +26,33 @@ export async function getChats(userId?: string | null) {
     }
 
     const results = await Promise.all(
-      chats.map(async chatKey => {
-        const chat = await redis.hgetall(chatKey)
-        return chat
-      })
+        chats.map(async chatKey => {
+          const chat = await redis.hgetall(chatKey)
+          return chat
+        })
     )
 
     return results
-      .filter((result): result is Record<string, any> => {
-        if (result === null || Object.keys(result).length === 0) {
-          return false
-        }
-        return true
-      })
-      .map(chat => {
-        const plainChat = { ...chat }
-        if (typeof plainChat.messages === 'string') {
-          try {
-            plainChat.messages = JSON.parse(plainChat.messages)
-          } catch (error) {
-            plainChat.messages = []
+        .filter((result): result is Record<string, any> => {
+          if (result === null || Object.keys(result).length === 0) {
+            return false
           }
-        }
-        if (plainChat.createdAt && !(plainChat.createdAt instanceof Date)) {
-          plainChat.createdAt = new Date(plainChat.createdAt)
-        }
-        return plainChat as Chat
-      })
+          return true
+        })
+        .map(chat => {
+          const plainChat = { ...chat }
+          if (typeof plainChat.messages === 'string') {
+            try {
+              plainChat.messages = JSON.parse(plainChat.messages)
+            } catch (error) {
+              plainChat.messages = []
+            }
+          }
+          if (plainChat.createdAt && !(plainChat.createdAt instanceof Date)) {
+            plainChat.createdAt = new Date(plainChat.createdAt)
+          }
+          return plainChat as Chat
+        })
   } catch (error) {
     return []
   }
@@ -84,42 +84,42 @@ export async function getChat(id: string, userId: string = 'anonymous') {
 }
 
 export async function clearChats(
-  userId: string = 'anonymous'
+    userId: string = 'anonymous'
 ): Promise<{ error?: string }> {
   const redis = await getRedis()
   const chats = await redis.zrange(`user:chat:${userId}`, 0, -1)
   if (!chats.length) {
     return { error: 'No chats to clear' }
   }
-  const pipeline = redis.pipeline()
 
-  for (const chat of chats) {
-    pipeline.del(chat)
-    pipeline.zrem(`user:chat:${userId}`, chat)
+  try {
+    await Promise.all(
+        chats.map(async chat => {
+          await redis.del(chat)
+          await redis.zrem(`user:chat:${userId}`, chat)
+        })
+    )
+
+    revalidatePath('/')
+    redirect('/')
+  } catch (error) {
+    return { error: 'Failed to clear chats' }
   }
-
-  await pipeline.exec()
-
-  revalidatePath('/')
-  redirect('/')
 }
 
 export async function saveChat(chat: Chat, userId: string = 'anonymous') {
   try {
     const redis = await getRedis()
-    const pipeline = redis.pipeline()
 
     const chatToSave = {
       ...chat,
       messages: JSON.stringify(chat.messages)
     }
 
-    pipeline.hmset(`chat:${chat.id}`, chatToSave)
-    pipeline.zadd(`user:chat:${userId}`, Date.now(), `chat:${chat.id}`)
+    await redis.hmset(`chat:${chat.id}`, chatToSave)
+    await redis.zadd(`user:chat:${userId}`, Date.now(), `chat:${chat.id}`)
 
-    const results = await pipeline.exec()
-
-    return results
+    console.log('[INFO] Chat saved to Redis')
   } catch (error) {
     throw error
   }
