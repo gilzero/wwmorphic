@@ -1,3 +1,4 @@
+// file: lib/agents/query-suggestor.tsx
 import { createStreamableUI, createStreamableValue } from 'ai/rsc'
 import { CoreMessage, streamObject } from 'ai'
 import { PartialRelated, relatedSchema } from '@/lib/schema/related'

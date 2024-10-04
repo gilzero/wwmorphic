@@ -1,3 +1,4 @@
+// file: lib/actions/chat.ts
 'use server'
 
 import { revalidatePath } from 'next/cache'

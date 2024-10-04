@@ -1,3 +1,4 @@
+// file: lib/agents/researcher.tsx
 import { createStreamableUI, createStreamableValue } from 'ai/rsc'
 import { CoreMessage, generateText, streamText } from 'ai'
 import { getTools } from './tools'

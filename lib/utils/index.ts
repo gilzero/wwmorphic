@@ -1,3 +1,4 @@
+// file: lib/utils/index.ts
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { createOpenAI } from '@ai-sdk/openai'
@@ -5,7 +6,7 @@ import { google } from '@ai-sdk/google'
 import { anthropic } from '@ai-sdk/anthropic'
 import { CoreMessage, LanguageModelV1 } from 'ai'
 
-// Simple logging function
+// Logging module
 const log = {
   info: (message: string) => console.log(`[INFO] ${message}`),
   warn: (message: string) => console.warn(`[WARN] ${message}`),
@@ -17,35 +18,28 @@ const log = {
   }
 }
 
-// Configuration object
+// Configuration module
 const config = {
   openai: {
     apiBase: () => process.env.OPENAI_API_BASE,
     apiKey: () => process.env.OPENAI_API_KEY,
-    model: () => process.env.OPENAI_API_MODEL || 'gpt-4o-mini'
+    model: () => process.env.OPENAI_API_MODEL || 'gpt-4o'
   },
   google: {
-    apiKey: () => process.env.GOOGLE_GENERATIVE_AI_API_KEY
+    apiKey: () => process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    model: () => 'gemini-1.5-pro-002'
   },
   anthropic: {
-    apiKey: () => process.env.ANTHROPIC_API_KEY
+    apiKey: () => process.env.ANTHROPIC_API_KEY,
+    model: () => 'claude-3-5-sonnet-20240620'
   }
 }
 
-/**
- * Combines Tailwind CSS classes.
- * @param inputs - ClassValue array to be combined
- * @returns Combined CSS classes
- */
+// Utility functions
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs))
 }
 
-/**
- * Sanitizes a URL by replacing spaces with '%20'
- * @param url - The URL to sanitize
- * @returns The sanitized URL
- */
 export function sanitizeUrl(url: string): string {
   if (typeof url !== 'string') {
     throw new TypeError('URL must be a string')
@@ -53,84 +47,74 @@ export function sanitizeUrl(url: string): string {
   return url.replace(/\s+/g, '%20')
 }
 
-// Model creation functions
-function getGoogleModel() {
-  return google('gemini-1.5-flash-002')
-}
-
-function getAnthropicModel() {
-  return anthropic('claude-3-5-sonnet-20240620')
-}
-
-function getOpenAIModel() {
-  const apiKey = config.openai.apiKey()
-  const baseURL = config.openai.apiBase()
-  const model = config.openai.model()
-  if (!apiKey) {
-    throw new Error('OpenAI configuration is incomplete')
-  }
-  return createOpenAI({ apiKey, baseURL, organization: '' }).chat(model)
-}
-
-// Configuration check function
-function checkConfiguration() {
-  const providers = [
-    { name: 'Google', check: () => config.google.apiKey() },
-    { name: 'Anthropic', check: () => config.anthropic.apiKey() },
-    { name: 'OpenAI', check: () => config.openai.apiKey() }
-  ]
-
-  const availableProviders = providers.filter(provider => provider.check())
-
-  if (availableProviders.length === 0) {
-    log.warn('No AI providers configured. The application will run with limited functionality.')
-  } else {
-    log.info(`Available AI providers: ${availableProviders.map(p => p.name).join(', ')}`)
-  }
-}
-
-/**
- * Selects and returns an AI model based on available configurations.
- * @returns An instance of the selected AI model or null if no provider is available
- */
-export function getModel(): LanguageModelV1 {
-  const providers = [
-    { name: 'Google', check: () => config.google.apiKey(), get: getGoogleModel },
-    { name: 'Anthropic', check: () => config.anthropic.apiKey(), get: getAnthropicModel },
-    { name: 'OpenAI', check: () => config.openai.apiKey(), get: getOpenAIModel }
-  ]
-
-  for (const provider of providers) {
-    try {
-      if (provider.check()) {
-        return provider.get()
+// AI Provider module
+const aiProviders = {
+  google: {
+    check: () => !!config.google.apiKey(),
+    get: () => google(config.google.model())
+  },
+  anthropic: {
+    check: () => !!config.anthropic.apiKey(),
+    get: () => anthropic(config.anthropic.model())
+  },
+  openai: {
+    check: () => !!config.openai.apiKey(),
+    get: () => {
+      const apiKey = config.openai.apiKey()
+      const baseURL = config.openai.apiBase()
+      const model = config.openai.model()
+      if (!apiKey) {
+        throw new Error('OpenAI configuration is incomplete')
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      log.debug(`${provider.name} provider not available: ${errorMessage}`)
+      return createOpenAI({ apiKey, baseURL, organization: '' }).chat(model)
+    }
+  }
+}
+
+// AI Model selection
+export function getModel(): LanguageModelV1 {
+  const providerOrder = ['google', 'anthropic', 'openai'] as const
+  
+  for (const providerName of providerOrder) {
+    const provider = aiProviders[providerName]
+    if (provider.check()) {
+      try {
+        return provider.get()
+      } catch (error) {
+        log.warn(`Failed to initialize ${providerName} model: ${error}`)
+      }
     }
   }
 
   throw new Error('No AI provider available. Please configure at least one provider.')
 }
 
-/**
- * Transforms messages with 'tool' role to 'assistant' role and stringifies their content.
- * @param messages - Array of CoreMessage to transform
- * @returns Array of transformed CoreMessage
- */
+// Message transformation
 export function transformToolMessages(messages: CoreMessage[]): CoreMessage[] {
   return messages.map(message =>
-      message.role === 'tool'
-          ? {
-            ...message,
-            role: 'assistant',
-            content: JSON.stringify(message.content),
-            type: 'tool'
-          }
-          : message
+    message.role === 'tool'
+      ? {
+          ...message,
+          role: 'assistant',
+          content: JSON.stringify(message.content),
+          type: 'tool'
+        }
+      : message
   )
 }
 
-// Call this function when your application starts
+// Configuration check
+export function checkConfiguration(): void {
+  const availableProviders = Object.entries(aiProviders)
+    .filter(([, provider]) => provider.check())
+    .map(([name]) => name)
+
+  if (availableProviders.length === 0) {
+    log.warn('No AI providers configured. The application will run with limited functionality.')
+  } else {
+    log.info(`Available AI providers: ${availableProviders.join(', ')}`)
+  }
+}
+
+// Initialize configuration check
 checkConfiguration()
